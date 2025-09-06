@@ -1,0 +1,90 @@
+name: Deploy Portfolio to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate repos.md from GitHub API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner; // repo owner (user/org)
+            const per_page = 100;
+            let page = 1;
+            let repos = [];
+            while (true) {
+              const res = await github.request('GET /users/{username}/repos', {
+                username: owner,
+                per_page,
+                page,
+                sort: 'updated'
+              });
+              if (!res.data.length) break;
+              repos = repos.concat(res.data);
+              page++;
+            }
+            // filter public, not forks
+            repos = repos.filter(r => !r.fork && !r.private);
+            // sort by updated desc
+            repos.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at));
+            function esc(s) { return (s || '').replaceAll('|','\\|').replaceAll('\n',' '); }
+            const rows = repos.map(r => {
+              const name = `[${r.name}](${r.html_url})`;
+              const stars = r.stargazers_count;
+              const issues = r.open_issues_count;
+              const lang = r.language || '';
+              const desc = esc(r.description);
+              const upd = (new Date(r.updated_at)).toISOString().slice(0,10);
+              return `| ${name} | ${stars} | ${issues} | ${lang} | ${desc} | ${upd} |`;
+            }).join('\n');
+            const md = `# Repositórios\\n\\n> Lista gerada automaticamente via GitHub Actions.\\n\\n| Repositório | ⭐ | Issues | Linguagem | Descrição | Atualizado |\\n|---|---:|---:|---|---|---|\\n${rows}\\n`;
+            fs.mkdirSync('docs', { recursive: true });
+            fs.writeFileSync('docs/repos.md', md);
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build MkDocs site
+        run: mkdocs build --strict
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
