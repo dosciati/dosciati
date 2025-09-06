@@ -1,20 +1,13 @@
-site_name: Meu Portfólio — GitHub
-site_description: Site que lista automaticamente meus repositórios públicos do GitHub
-site_url: https://<seu-usuario>.github.io
+site_name: Portfólio — dosciati
+site_description: Lista automática de repositórios públicos do GitHub
+site_url: https://dosciati.github.io/dosciati/
 theme:
   name: material
   language: pt
-  features:
-    - navigation.instant
-    - navigation.footer
-    - content.action.edit
 markdown_extensions:
   - attr_list
   - toc:
       toc_depth: 2-6
-  - admonition
-  - def_list
-  - tables
 nav:
   - Início: index.md
   - Repositórios: repos.md
@@ -23,5 +16,3 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/dosciati
-    - icon: fontawesome/brands/linkedin
-      link: https://www.linkedin.com/in/andredosciati/
